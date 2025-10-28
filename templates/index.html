@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logbook FM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #000;
+      --surface: #0d0d0d;
+      --surface-strong: #151515;
+      --text: #f5f5f5;
+      --text-muted: #9e9e9e;
+      --border: #1c1c1c;
+      --border-strong: #2a2a2a;
+      --shadow: 0 0 0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      background: var(--background);
+      color: var(--text);
+      font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+    }
+
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .brand-name {
+      font-size: clamp(28px, 3vw, 40px);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-copy {
+      color: var(--text-muted);
+      max-width: 480px;
+    }
+
+    .panels {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 32px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .panel-header {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-title {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .panel-description {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid var(--border-strong);
+      background: var(--surface-strong);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.6;
+      font-family: inherit;
+      resize: vertical;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #f5f5f5;
+    }
+
+    textarea::placeholder {
+      color: var(--text-muted);
+    }
+
+    .panel-actions {
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: color 0.2s ease, background 0.2s ease, border 0.2s ease;
+    }
+
+    .button:hover {
+      border-color: #f5f5f5;
+    }
+
+    .button.primary {
+      background: #f5f5f5;
+      border-color: #f5f5f5;
+      color: #000;
+    }
+
+    .button.primary:hover {
+      background: #fff;
+    }
+
+    .button.secondary {
+      color: var(--text-muted);
+    }
+
+    .button.secondary:hover {
+      color: var(--text);
+    }
+
+    .button.small {
+      padding: 10px 16px;
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border-strong);
+      border-top-color: var(--text);
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .status {
+      font-size: 14px;
+      color: var(--text-muted);
+      display: none;
+    }
+
+    .status.success {
+      display: block;
+      color: var(--text);
+    }
+
+    .status.error {
+      display: block;
+      color: #ff7070;
+    }
+
+    .status.loading {
+      display: block;
+    }
+
+    .logs-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 560px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .logs-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .logs-list::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 999px;
+    }
+
+    .log-card {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface-strong);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .log-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      color: var(--text-muted);
+      font-size: 13px;
+      letter-spacing: 0.01em;
+    }
+
+    .log-id {
+      color: var(--text);
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .log-text {
+      font-size: 15px;
+      white-space: pre-wrap;
+    }
+
+    .log-text.editing {
+      display: none;
+    }
+
+    .log-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .log-edit-form {
+      display: none;
+    }
+
+    .log-edit-form.active {
+      display: block;
+    }
+
+    .log-edit-textarea {
+      min-height: 140px;
+    }
+
+    .empty-state {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+      font-size: 14px;
+    }
+
+    @media (max-width: 960px) {
+      .panels {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        padding: 32px 20px 60px;
+      }
+
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .log-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .log-actions {
+        width: 100%;
+      }
+
+      .log-actions .button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="brand">
+        <span class="brand-name">Logbook FM</span>
+        <p class="brand-copy">Capture the raw take, let Ollama return the studio cut.</p>
+      </div>
+      <button class="button secondary small" type="button" id="refresh-logs">Refresh history</button>
+    </header>
+    <main class="panels">
+      <section class="panel entry" id="new-entry-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">New entry</h2>
+          <p class="panel-description">Command + Enter to submit.</p>
+        </div>
+        <textarea id="entry-text" placeholder="Note what happened, drop bullets, or paste raw transcripts."></textarea>
+        <div class="panel-actions">
+          <button class="button primary" type="button" id="submit-entry">Create entry</button>
+        </div>
+        <div class="status" id="entry-status"></div>
+      </section>
+      <section class="panel history" id="logs-panel">
+        <div class="panel-header">
+          <h2 class="panel-title">History</h2>
+          <p class="panel-description">Everything lands in <code>logs.md</code>.</p>
+        </div>
+        <div class="logs-list" id="logs-container">
+          <div class="empty-state">
+            <p>Logs will appear here once you publish an entry.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    const refreshButton = document.getElementById('refresh-logs');
+    if (refreshButton) {
+      refreshButton.addEventListener('click', () => {
+        loadLogs();
+      });
+    }
+
+    function showStatus(elementId, message, type) {
+      const status = document.getElementById(elementId);
+      if (!status) return;
+      status.textContent = message;
+      status.className = `status ${type}`;
+      status.style.display = 'block';
+
+      if (type !== 'loading') {
+        setTimeout(() => {
+          status.style.display = 'none';
+        }, 4000);
+      }
+    }
+
+    document.getElementById('submit-entry').addEventListener('click', async () => {
+      const textArea = document.getElementById('entry-text');
+      const text = textArea.value.trim();
+
+      if (!text) {
+        showStatus('entry-status', 'Please add some notes before submitting.', 'error');
+        return;
+      }
+
+      const button = document.getElementById('submit-entry');
+      button.disabled = true;
+      button.innerHTML = '<span class="spinner"></span><span>Processing</span>';
+      showStatus('entry-status', 'Paraphrasing with Ollama…', 'loading');
+
+      try {
+        const response = await fetch('/api/logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showStatus('entry-status', `Log ${result.id} created.`, 'success');
+          textArea.value = '';
+          loadLogs();
+        } else {
+          showStatus('entry-status', result.error || 'Failed to create entry.', 'error');
+        }
+      } catch (error) {
+        showStatus('entry-status', 'Network error occurred.', 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = 'Create entry';
+      }
+    });
+
+    async function loadLogs() {
+      const container = document.getElementById('logs-container');
+      if (!container) return;
+      container.innerHTML = '<div class="empty-state"><div class="spinner"></div><p>Syncing latest notes…</p></div>';
+
+      try {
+        const response = await fetch('/api/logs');
+        const logs = await response.json();
+
+        if (!Array.isArray(logs) || logs.length === 0) {
+          container.innerHTML = '<div class="empty-state"><p>No entries yet.</p></div>';
+          return;
+        }
+
+        container.innerHTML = logs.reverse().map(log => `
+          <article class="log-card" data-id="${log.id}">
+            <header class="log-header">
+              <div class="log-meta">
+                <span class="log-id">Log ${log.id}</span>
+                <span class="log-date">${log.date}</span>
+              </div>
+              <div class="log-actions">
+                <button class="button secondary small edit-btn" type="button">Edit</button>
+                <button class="button secondary small delete-btn" type="button">Delete</button>
+              </div>
+            </header>
+            <p class="log-text">${escapeHtml(log.text)}</p>
+            <div class="log-edit-form">
+              <textarea class="log-edit-textarea">${escapeHtml(log.text)}</textarea>
+            </div>
+          </article>
+        `).join('');
+
+        attachLogEventListeners();
+      } catch (error) {
+        container.innerHTML = '<div class="empty-state"><p>Failed to load logs. Please try again.</p></div>';
+      }
+    }
+
+    function attachLogEventListeners() {
+      document.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const card = this.closest('.log-card');
+          const textDiv = card.querySelector('.log-text');
+          const form = card.querySelector('.log-edit-form');
+          const isEditing = form.classList.contains('active');
+
+          if (isEditing) {
+            const newText = card.querySelector('.log-edit-textarea').value.trim();
+            if (newText) {
+              updateLog(card.dataset.id, newText, card);
+            }
+          } else {
+            textDiv.classList.add('editing');
+            form.classList.add('active');
+            this.textContent = 'Save';
+            this.classList.remove('secondary');
+            this.classList.add('primary');
+          }
+        });
+      });
+
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          if (confirm('Delete this entry?')) {
+            deleteLog(this.closest('.log-card').dataset.id);
+          }
+        });
+      });
+    }
+
+    async function updateLog(id, text, card) {
+      const btn = card.querySelector('.edit-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>';
+
+      try {
+        const response = await fetch(`/api/logs/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          loadLogs();
+        } else {
+          alert(result.error || 'Failed to update log.');
+          btn.disabled = false;
+          btn.textContent = 'Save';
+          btn.classList.add('primary');
+        }
+      } catch (error) {
+        alert('Network error occurred.');
+        btn.disabled = false;
+        btn.textContent = 'Save';
+        btn.classList.add('primary');
+      }
+    }
+
+    async function deleteLog(id) {
+      try {
+        const response = await fetch(`/api/logs/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          loadLogs();
+        } else {
+          alert('Failed to delete log.');
+        }
+      } catch (error) {
+        alert('Network error occurred.');
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    document.getElementById('entry-text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        document.getElementById('submit-entry').click();
+      }
+    });
+
+    loadLogs();
+  </script>
+</body>
+</html>
