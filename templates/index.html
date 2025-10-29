@@ -173,7 +173,7 @@
       border: 1px solid transparent;
       color: var(--text);
       text-align: left;
-      transition: background var(--transition), border var(--transition), box-shadow var(--transition);
+      transition: background var(--transition), border var(--transition), box-shadow var(--transition), transform var(--transition);
     }
 
     .notebook-select:hover {
@@ -552,10 +552,35 @@
       padding: 0;
       border-radius: 50%;
       justify-content: center;
+      background: var(--notebook-color, var(--surface-muted));
+      border-color: var(--notebook-color, var(--border));
     }
 
     .sidebar[data-collapsed="true"] .notebook-select-count {
       display: none;
+    }
+
+    .notebook-select::before {
+      content: attr(data-initial);
+      display: none;
+      font-size: 18px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .sidebar[data-collapsed="true"] .notebook-select::before {
+      display: block;
+      color: var(--text);
+    }
+
+    .sidebar[data-collapsed="true"] .notebook-select:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 16px rgba(102, 62, 11, 0.15);
+    }
+
+    .sidebar[data-collapsed="true"] .notebook-row.active .notebook-select {
+      box-shadow: 0 12px 24px rgba(102, 62, 11, 0.22);
+      transform: scale(1.08);
     }
 
     .button.primary {
@@ -1915,6 +1940,23 @@
         updateControls();
       }
 
+      const notebookColors = [
+        '#e8b5ce', // soft pink
+        '#b5d4e8', // soft blue
+        '#d4e8b5', // soft green
+        '#e8d4b5', // soft peach
+        '#d4b5e8', // soft purple
+        '#e8c5b5', // soft coral
+        '#b5e8d4', // soft mint
+        '#e8b5b5', // soft rose
+        '#b5c5e8', // soft lavender
+        '#d4e8c5'  // soft sage
+      ];
+
+      function getNotebookColor(index) {
+        return notebookColors[index % notebookColors.length];
+      }
+
       function renderNotebooks(error = false) {
         if (!elements.notebookList) return;
 
@@ -1938,11 +1980,13 @@
         }
 
         elements.notebookList.innerHTML = state.notebooks
-          .map((notebook) => {
+          .map((notebook, index) => {
             const isActive = notebook.slug === state.currentNotebook;
+            const initial = notebook.name.charAt(0).toUpperCase();
+            const color = getNotebookColor(index);
             return `
               <div class="notebook-row ${isActive ? 'active' : ''}">
-                <button class="notebook-select" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}">
+                <button class="notebook-select" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}" data-initial="${escapeAttribute(initial)}" style="--notebook-color: ${color};">
                   <span class="notebook-select-title">${escapeHtml(notebook.name)}</span>
                   <span class="notebook-select-count">${notebook.logCount ?? 0}</span>
                 </button>
