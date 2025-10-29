@@ -1667,13 +1667,26 @@
             <h2 class="modal-title">Ollama Not Available</h2>
             <p class="modal-text">The rephrase feature requires Ollama to be installed and running on your system.</p>
             <div class="modal-field">
-              <h3 class="field-label">Installation Steps:</h3>
+              <h3 class="field-label">Installation Steps (if not installed):</h3>
               <ol style="padding-left: 20px; margin: 12px 0; text-align: left;">
                 <li style="margin-bottom: 8px;">Install Ollama from <a href="https://ollama.ai" target="_blank" style="color: var(--accent);">https://ollama.ai</a></li>
                 <li style="margin-bottom: 8px;">Start the Ollama service (usually runs on system startup)</li>
                 <li>Run: <code style="background: var(--surface-muted); padding: 4px 8px; border-radius: 4px; font-family: var(--font-mono);">ollama pull llama3.2</code> in terminal</li>
               </ol>
-              <p style="margin-top: 12px;">Once installed and running, the rephrase feature will work automatically.</p>
+              <h3 class="field-label" style="margin-top: 16px;">Service Startup (if already installed):</h3>
+              <div style="margin: 12px 0; text-align: left;">
+                <p><strong>macOS:</strong></p>
+                <ul style="padding-left: 20px;">
+                  <li>Check if running: <code style="background: var(--surface-muted); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono);">brew services list | grep ollama</code></li>
+                  <li>Start service: <code style="background: var(--surface-muted); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono);">brew services start ollama</code></li>
+                </ul>
+                <p><strong>Linux:</strong></p>
+                <ul style="padding-left: 20px;">
+                  <li>Check if running: <code style="background: var(--surface-muted); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono);">systemctl --user status ollama</code></li>
+                  <li>Start service: <code style="background: var(--surface-muted); padding: 2px 6px; border-radius: 4px; font-family: var(--font-mono);">systemctl --user start ollama</code></li>
+                </ul>
+              </div>
+              <p style="margin-top: 12px;">Once Ollama is running, the rephrase feature will work automatically.</p>
             </div>
             <div class="modal-actions">
               <button class="button ghost" type="button" data-modal-action="cancel-modal">Close</button>
