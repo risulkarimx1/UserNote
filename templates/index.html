@@ -180,7 +180,7 @@
       border-color: var(--border-strong);
     }
 
-    .notebook-row.active .button {
+    .active-notebook {
       background: var(--surface-strong) !important;
       border-color: var(--accent) !important;
       box-shadow: 0 12px 24px rgba(102, 62, 11, 0.12);
@@ -618,7 +618,7 @@
       border-color: var(--border-strong);
     }
 
-    .sidebar[data-collapsed="true"] .notebook-row.active .button[data-initial] {
+    .sidebar[data-collapsed="true"] .active-notebook[data-initial] {
       border-color: var(--accent);
       box-shadow: 0 12px 24px rgba(102, 62, 11, 0.12);
     }
@@ -2053,12 +2053,10 @@
             const initial = notebook.name.charAt(0).toUpperCase();
             const color = getNotebookColor(index);
             return `
-              <div class="notebook-row ${isActive ? 'active' : ''}">
-                <button class="button ghost full" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}" data-initial="${escapeAttribute(initial)}">
-                  <span class="button-label">${escapeHtml(notebook.name)}</span>
-                  <span class="notebook-select-count">${notebook.logCount ?? 0}</span>
-                </button>
-              </div>
+              <button class="button ghost full sidebar-actions ${isActive ? 'active-notebook' : ''}" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}" data-initial="${escapeAttribute(initial)}">
+                <span class="button-label">${escapeHtml(notebook.name)}</span>
+                <span class="notebook-select-count">${notebook.logCount ?? 0}</span>
+              </button>
             `;
           })
           .join('');
