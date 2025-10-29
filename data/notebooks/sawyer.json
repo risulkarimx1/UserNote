@@ -1,0 +1,12 @@
+{
+  "name": "Sawyer",
+  "slug": "sawyer",
+  "nextId": 2,
+  "logs": [
+    {
+      "id": 1,
+      "date": "10/29/2025 01:52:50",
+      "text": "first"
+    }
+  ]
+}

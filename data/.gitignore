@@ -1,0 +1,4 @@
+# JSON files generated per project
+projects/*.json
+projects/*/attachments/
+!projects/.gitkeep
