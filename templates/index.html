@@ -241,6 +241,7 @@
     .entries-icon-buttons {
       display: inline-flex;
       gap: 12px;
+      justify-content: center;
     }
 
     .entries-scroll {
@@ -929,10 +930,17 @@
 
       .entries-icon-buttons {
         width: 100%;
+        justify-content: center;
       }
 
       .entries-icon-buttons .button {
         flex: 1;
+      }
+      
+      .entries-icon-buttons .button.icon {
+        flex: none;
+        width: 44px;
+        height: 44px;
       }
     }
   </style>
@@ -968,11 +976,10 @@
             <button class="button ghost icon" type="button" id="refresh-logs" aria-label="Refresh notebook" title="Refresh notebook">
               <span class="button-icon" aria-hidden="true">⟳</span>
             </button>
+            <button class="button danger icon delete-notebook" type="button" id="delete-notebook" aria-label="Delete notebook" title="Delete notebook">
+              <span class="button-icon" aria-hidden="true">🗑</span>
+            </button>
           </div>
-          <button class="button danger full delete-notebook" type="button" id="delete-notebook">
-            <span class="button-icon" aria-hidden="true">🗑</span>
-            <span class="button-label">Delete notebook</span>
-          </button>
         </header>
         <div class="entries-scroll" id="entries-list">
           <div class="entries-empty">Select a notebook to see its history.</div>
