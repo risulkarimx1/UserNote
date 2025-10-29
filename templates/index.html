@@ -240,8 +240,25 @@
 
     .entries-icon-buttons {
       display: inline-flex;
-      gap: 12px;
+      gap: 0; /* Remove gap since we want them connected */
       justify-content: center;
+    }
+    
+    .entries-icon-buttons .button {
+      border-radius: 0;
+      border-left-width: 0;
+    }
+    
+    .entries-icon-buttons .button:first-child {
+      border-top-left-radius: 999px;
+      border-bottom-left-radius: 999px;
+      border-left-width: 1px;
+    }
+    
+    .entries-icon-buttons .button:last-child {
+      border-top-right-radius: 999px;
+      border-bottom-right-radius: 999px;
+      border-right-width: 1px;
     }
 
     .entries-scroll {
@@ -930,17 +947,24 @@
 
       .entries-icon-buttons {
         width: 100%;
-        justify-content: center;
       }
 
       .entries-icon-buttons .button {
         flex: 1;
+        border-radius: 0;
+        border-left-width: 0;
       }
       
-      .entries-icon-buttons .button.icon {
-        flex: none;
-        width: 44px;
-        height: 44px;
+      .entries-icon-buttons .button:first-child {
+        border-top-left-radius: 999px;
+        border-bottom-left-radius: 999px;
+        border-left-width: 1px;
+      }
+      
+      .entries-icon-buttons .button:last-child {
+        border-top-right-radius: 999px;
+        border-bottom-right-radius: 999px;
+        border-right-width: 1px;
       }
     }
   </style>
@@ -970,14 +994,29 @@
       <section class="entries-column">
         <header class="entries-header">
           <div class="entries-icon-buttons">
-            <button class="button primary icon" type="button" id="new-entry" aria-label="New notebook entry" title="New notebook entry">
-              <span class="button-icon" aria-hidden="true">✚</span>
+            <button class="button primary" type="button" id="new-entry" aria-label="New notebook entry" title="New notebook entry">
+              <svg class="button-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"></path>
+                <path d="m3 7 9 6 9-6"></path>
+              </svg>
+              <span class="button-label">New</span>
             </button>
-            <button class="button ghost icon" type="button" id="refresh-logs" aria-label="Refresh notebook" title="Refresh notebook">
-              <span class="button-icon" aria-hidden="true">⟳</span>
+            <button class="button ghost" type="button" id="refresh-logs" aria-label="Refresh notebook" title="Refresh notebook">
+              <svg class="button-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M20 11a8.1 8.1 0 0 0-2.32-5.7A7.94 7.94 0 0 0 12 3a7.94 7.94 0 0 0-5.68 2.32A8.1 8.1 0 0 0 3 11h2a6 6 0 0 1 4-5.66A6 6 0 0 1 15.66 7A6 6 0 0 1 17 11"></path>
+                <path d="M4 13a8.1 8.1 0 0 0 2.32 5.7A7.94 7.94 0 0 0 12 21a7.94 7.94 0 0 0 5.68-2.32A8.1 8.1 0 0 0 21 13h-2a6 6 0 0 1-4 5.66A6 6 0 0 1 8.34 17A6 6 0 0 1 7 13"></path>
+              </svg>
+              <span class="button-label">Refresh</span>
             </button>
-            <button class="button danger icon delete-notebook" type="button" id="delete-notebook" aria-label="Delete notebook" title="Delete notebook">
-              <span class="button-icon" aria-hidden="true">🗑</span>
+            <button class="button danger delete-notebook" type="button" id="delete-notebook" aria-label="Delete notebook" title="Delete notebook">
+              <svg class="button-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M4 7h16"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
+                <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12"></path>
+                <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"></path>
+              </svg>
+              <span class="button-label">Delete</span>
             </button>
           </div>
         </header>
