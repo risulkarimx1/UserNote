@@ -578,41 +578,48 @@
       justify-content: center;
     }
 
-    .sidebar[data-collapsed="true"] .notebook-select {
+    .sidebar[data-collapsed="true"] .button[data-initial] {
       width: 48px;
       height: 48px;
+      min-width: 48px;
+      min-height: 48px;
+      max-width: 48px;
+      max-height: 48px;
       padding: 0;
       border-radius: 50%;
       justify-content: center;
-      background: var(--notebook-color, var(--surface-muted));
-      border-color: var(--notebook-color, var(--border));
+      font-size: 14px;
+      font-weight: 500;
+      flex-shrink: 0;
+      color: var(--text);
+      border: 1px solid var(--border);
+      background: var(--surface);
     }
 
     .sidebar[data-collapsed="true"] .notebook-select-count {
       display: none;
     }
 
-    .notebook-select::before {
+    .button[data-initial]::before {
       content: attr(data-initial);
       display: none;
       font-size: 18px;
-      font-weight: 600;
+      font-weight: 500;
       text-transform: uppercase;
     }
 
-    .sidebar[data-collapsed="true"] .notebook-select::before {
+    .sidebar[data-collapsed="true"] .button[data-initial]::before {
       display: block;
       color: var(--text);
     }
 
-    .sidebar[data-collapsed="true"] .notebook-select:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 16px rgba(102, 62, 11, 0.15);
+    .sidebar[data-collapsed="true"] .button[data-initial]:hover {
+      border-color: var(--border-strong);
     }
 
-    .sidebar[data-collapsed="true"] .notebook-row.active .notebook-select {
-      box-shadow: 0 12px 24px rgba(102, 62, 11, 0.22);
-      transform: scale(1.08);
+    .sidebar[data-collapsed="true"] .notebook-row.active .button[data-initial] {
+      border-color: var(--accent);
+      box-shadow: 0 12px 24px rgba(102, 62, 11, 0.12);
     }
 
     .button.primary {
@@ -2046,7 +2053,7 @@
             const color = getNotebookColor(index);
             return `
               <div class="notebook-row ${isActive ? 'active' : ''}">
-                <button class="button ghost full" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}">
+                <button class="button ghost full" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}" data-initial="${escapeAttribute(initial)}">
                   <span class="button-label">${escapeHtml(notebook.name)}</span>
                   <span class="notebook-select-count">${notebook.logCount ?? 0}</span>
                 </button>
