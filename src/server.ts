@@ -154,7 +154,16 @@ class NotebookManager {
   ) {
     const notebook = this.requireNotebook(slug);
     const shouldSkipParaphrase = options.skipParaphrase === true;
-    const paraphrased = shouldSkipParaphrase ? text : await this.paraphrase(text);
+    let paraphrased = text;
+    if (!shouldSkipParaphrase) {
+      try {
+        paraphrased = await this.paraphrase(text);
+      } catch (error) {
+        // If Ollama fails, return the original text and throw error to be handled by caller
+        paraphrased = text;
+        throw error;
+      }
+    }
     const logId = notebook.nextId;
     const attachments = await this.saveAttachments(slug, logId, attachmentsInput);
     const newLog: NotebookLog = {
@@ -183,7 +192,16 @@ class NotebookManager {
     }
 
     const shouldSkipParaphrase = options.skipParaphrase === true;
-    const paraphrased = shouldSkipParaphrase ? text : await this.paraphrase(text);
+    let paraphrased = text;
+    if (!shouldSkipParaphrase) {
+      try {
+        paraphrased = await this.paraphrase(text);
+      } catch (error) {
+        // If Ollama fails, return the original text and throw error to be handled by caller
+        paraphrased = text;
+        throw error;
+      }
+    }
     const oldText = log.text;
     log.text = paraphrased;
     await this.saveNotebook(notebook);
@@ -192,6 +210,10 @@ class NotebookManager {
       ...this.formatLogForResponse(slug, log),
       old_text: oldText
     };
+  }
+
+  async checkOllamaAvailability(): Promise<boolean> {
+    return this.checkOllamaConnection();
   }
 
   async deleteLog(slug: string, logId: number): Promise<boolean> {
@@ -434,6 +456,21 @@ class NotebookManager {
       .replace(/^-+|-+$/g, '');
   }
 
+  private async checkOllamaConnection(): Promise<boolean> {
+    try {
+      // Try to ping Ollama by asking for a simple response
+      await this.ollama.generate({
+        model: this.model,
+        prompt: "Say 'hello' and nothing else.",
+        stream: false
+      });
+      return true;
+    } catch (error) {
+      console.warn('Ollama not available:', error);
+      return false;
+    }
+  }
+
   private async paraphrase(text: string): Promise<string> {
     try {
       const response = await this.ollama.generate({
@@ -445,7 +482,7 @@ class NotebookManager {
       return response.response.trim();
     } catch (error) {
       console.error('Ollama error:', error);
-      return text;
+      throw error; // Re-throw so the calling function can handle the error
     }
   }
 
@@ -649,6 +686,15 @@ app.get('/api/notebooks/:slug/export', async (req: Request, res: Response) => {
     } else {
       res.status(500).json({ error: message });
     }
+  }
+});
+
+app.get('/api/ollama/health', async (req: Request, res: Response) => {
+  try {
+    const isAvailable = await notebookManager.checkOllamaAvailability();
+    res.json({ available: isAvailable });
+  } catch (error) {
+    res.status(500).json({ available: false, error: 'Failed to check Ollama status' });
   }
 });
 
