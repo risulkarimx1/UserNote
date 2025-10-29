@@ -21,6 +21,7 @@ interface NotebookLog {
   id: number;
   date: string;
   text: string;
+  title?: string;
   attachments?: LogAttachment[];
 }
 
@@ -166,10 +167,23 @@ class NotebookManager {
     }
     const logId = notebook.nextId;
     const attachments = await this.saveAttachments(slug, logId, attachmentsInput);
+    // Generate a title using Ollama if available, otherwise use first two words
+    let title = this.generateFallbackTitle(text);
+    
+    if (!shouldSkipParaphrase) {
+      try {
+        title = await this.generateTitle(text);
+      } catch (error) {
+        console.warn('Failed to generate title with Ollama, using fallback:', error);
+        title = this.generateFallbackTitle(text);
+      }
+    }
+
     const newLog: NotebookLog = {
       id: logId,
       date: this.formatTimestamp(),
       text: paraphrased,
+      title,
       attachments: attachments.length > 0 ? attachments : undefined
     };
 
@@ -202,8 +216,21 @@ class NotebookManager {
         throw error;
       }
     }
+    // Update the title as well when editing
+    let title = log.title || this.generateFallbackTitle(text);
+    
+    if (!shouldSkipParaphrase) {
+      try {
+        title = await this.generateTitle(text);
+      } catch (error) {
+        console.warn('Failed to regenerate title with Ollama, keeping existing or using fallback:', error);
+        title = log.title || this.generateFallbackTitle(text);
+      }
+    }
+    
     const oldText = log.text;
     log.text = paraphrased;
+    log.title = title;
     await this.saveNotebook(notebook);
 
     return {
@@ -232,6 +259,34 @@ class NotebookManager {
 
     await this.saveNotebook(notebook);
     return true;
+  }
+
+  private async generateTitle(text: string): Promise<string> {
+    try {
+      const response = await this.ollama.generate({
+        model: this.model,
+        prompt: `Generate a short, concise title (maximum 10 words) for this text: ${text}`,
+        stream: false
+      });
+
+      let title = response.response.trim();
+      // Make sure title is not empty and limit to 10 words
+      if (title) {
+        title = title.split(/\s+/).slice(0, 10).join(' ');
+      }
+      return title || this.generateFallbackTitle(text);
+    } catch (error) {
+      console.error('Error generating title:', error);
+      return this.generateFallbackTitle(text);
+    }
+  }
+
+  private generateFallbackTitle(text: string): string {
+    // Use first two words as title, or the text itself if shorter
+    const words = text.trim().split(/\s+/);
+    if (words.length === 0) return 'Untitled Entry';
+    if (words.length === 1) return words[0];
+    return `${words[0]} ${words[1]}`;
   }
 
   async exportNotebook(slug: string): Promise<string> {
