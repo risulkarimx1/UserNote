@@ -180,9 +180,9 @@
       border-color: var(--border-strong);
     }
 
-    .notebook-row.active .notebook-select {
-      background: var(--surface-strong);
-      border-color: var(--accent);
+    .notebook-row.active .button {
+      background: var(--surface-strong) !important;
+      border-color: var(--accent) !important;
       box-shadow: 0 12px 24px rgba(102, 62, 11, 0.12);
     }
 
@@ -198,6 +198,20 @@
       color: var(--text-muted);
       margin-left: 12px;
       flex-shrink: 0;
+    }
+    
+    .button-label {
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    
+    .button.full {
+      justify-content: space-between;
+      padding-left: 20px;
+      padding-right: 20px;
     }
 
     .notebook-skeleton {
@@ -2032,8 +2046,8 @@
             const color = getNotebookColor(index);
             return `
               <div class="notebook-row ${isActive ? 'active' : ''}">
-                <button class="notebook-select" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}" data-initial="${escapeAttribute(initial)}" style="--notebook-color: ${color};">
-                  <span class="notebook-select-title">${escapeHtml(notebook.name)}</span>
+                <button class="button ghost full" type="button" data-notebook-select="${escapeAttribute(notebook.slug)}">
+                  <span class="button-label">${escapeHtml(notebook.name)}</span>
                   <span class="notebook-select-count">${notebook.logCount ?? 0}</span>
                 </button>
               </div>
