@@ -265,14 +265,14 @@ class NotebookManager {
     try {
       const response = await this.ollama.generate({
         model: this.model,
-        prompt: `Generate a short, concise title (maximum 10 words) for this text: ${text}`,
+        prompt: `Generate a short title with maximum 3 words for this text: ${text}. Only return the title, nothing else.`,
         stream: false
       });
 
       let title = response.response.trim();
-      // Make sure title is not empty and limit to 10 words
+      // Make sure title is not empty and limit to 3 words
       if (title) {
-        title = title.split(/\s+/).slice(0, 10).join(' ');
+        title = title.split(/\s+/).slice(0, 3).join(' ');
       }
       return title || this.generateFallbackTitle(text);
     } catch (error) {
