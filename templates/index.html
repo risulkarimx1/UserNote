@@ -48,6 +48,15 @@
       overflow: hidden;
     }
 
+    body.blocking-overlay-active {
+      cursor: wait;
+    }
+
+    body.blocking-overlay-active .app-shell {
+      pointer-events: none;
+      user-select: none;
+    }
+
     button {
       font: inherit;
       cursor: pointer;
@@ -738,6 +747,11 @@
       display: none !important;
     }
 
+    #loading-overlay .modal-content {
+      cursor: wait;
+      outline: none;
+    }
+
     .modal-backdrop {
       position: absolute;
       inset: 0;
@@ -1095,6 +1109,18 @@
     </main>
   </div>
   <div class="modal-root" id="modal-root" hidden></div>
+  <div class="modal-root" id="loading-overlay" hidden aria-hidden="true" role="alertdialog" aria-modal="true" aria-labelledby="loading-overlay-message">
+    <div class="modal-content" style="background: var(--surface); text-align: center; padding: 40px;" tabindex="-1">
+      <div class="equalizer" aria-hidden="true" style="margin: 0 auto 24px;">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <p id="loading-overlay-message" style="font-size: 18px; color: var(--text);" aria-live="assertive">Processing…</p>
+    </div>
+  </div>
   <script>
     (function() {
       const NOTEBOOK_STORAGE_KEY = 'logbook-fm-current-notebook';
@@ -1114,8 +1140,10 @@
       };
 
       let statusTimeout = null;
+      let overlayReturnFocus = null;
 
       const elements = {
+        appShell: document.querySelector('.app-shell'),
         sidebar: document.getElementById('sidebar'),
         toggleSidebar: document.getElementById('toggle-sidebar'),
         notebookList: document.getElementById('notebook-list'),
@@ -1141,7 +1169,9 @@
         existingAttachments: document.getElementById('existing-attachments'),
         overlay: document.getElementById('generation-overlay'),
         workspaceForm: document.getElementById('entry-form'),
-        modalRoot: document.getElementById('modal-root')
+        modalRoot: document.getElementById('modal-root'),
+        loadingOverlay: document.getElementById('loading-overlay'),
+        loadingOverlayMessage: document.getElementById('loading-overlay-message')
       };
 
       if (elements.workspaceForm) {
@@ -1507,7 +1537,7 @@
           updateControls();
 
           if (shouldRephrase) {
-            toggleOverlay(true);
+            toggleOverlay(true, 'Polishing with Ollama…');
           } else {
             showStatus('Saving entry…', 'loading');
             showedLoadingStatus = true;
@@ -1896,10 +1926,23 @@
           return;
         }
 
+        let exportCompleted = false;
+        let minimumDisplayTime = null;
+        
         try {
+          // Show full-screen loading overlay with appropriate message
+          const loadingMessage = format === 'markdown' ? 'Generating Markdown file…' : 'Generating PDF…';
+          console.log('Showing loading overlay:', loadingMessage); // Debug log
+          showFullScreenLoading(loadingMessage);
+
+          // Set minimum display time to ensure the overlay is visible to users
+          minimumDisplayTime = new Promise(resolve => setTimeout(resolve, 500)); // 500ms minimum
+
           const response = await fetch(`/api/notebooks/${encodeURIComponent(state.currentNotebook)}/export`);
           if (!response.ok) {
             const result = await response.json().catch(() => ({}));
+            hideFullScreenLoading();
+            await minimumDisplayTime; // Ensure minimum time has passed
             showStatus(result.error || 'Failed to export notebook.', 'error');
             return;
           }
@@ -1909,20 +1952,39 @@
           const filenameBase = notebook ? notebook.slug : state.currentNotebook;
 
           if (format === 'markdown') {
+            // Create a temporary link to trigger the download dialog
             const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
             const url = window.URL.createObjectURL(blob);
+            
+            // Create a temporary link and trigger the download manually
             const link = document.createElement('a');
             link.href = url;
             link.download = `${filenameBase}.md`;
-            document.body.appendChild(link);
+            document.body.appendChild(link); // Add to DOM before clicking
+            
+            // This will trigger the browser's save dialog
             link.click();
-            document.body.removeChild(link);
+            
+            // Clean up
+            document.body.removeChild(link); // Remove from DOM after clicking
             window.URL.revokeObjectURL(url);
-            showStatus('Exported Markdown.', 'success');
+            
+            exportCompleted = true;
+            hideFullScreenLoading();
+            await minimumDisplayTime; // Ensure minimum time has passed
+            showStatus('Export ready. Check your downloads.', 'success');
           } else {
+            exportCompleted = true;
+            hideFullScreenLoading();
+            await minimumDisplayTime; // Ensure minimum time has passed
             exportMarkdownAsPdf(markdown, filenameBase);
           }
         } catch (error) {
+          console.error('Export error:', error); // Debug log
+          hideFullScreenLoading();
+          if (minimumDisplayTime) {
+            await minimumDisplayTime; // Ensure minimum time has passed
+          }
           showStatus('Network error while exporting.', 'error');
         }
       }
@@ -2344,10 +2406,69 @@
         }
       }
 
-      function toggleOverlay(show) {
+      function toggleOverlay(show, message = 'Processing…') {
         if (!elements.overlay) return;
+
+        // Update the message if showing the overlay
+        if (show) {
+          const messageElement = elements.overlay.querySelector('p');
+          if (messageElement) {
+            messageElement.textContent = message;
+          }
+        }
+
         elements.overlay.hidden = !show;
         elements.overlay.setAttribute('aria-hidden', String(!show));
+      }
+
+      function showFullScreenLoading(message = 'Processing…') {
+        if (!elements.loadingOverlay || !elements.loadingOverlayMessage) return;
+
+        if (document.activeElement instanceof HTMLElement) {
+          overlayReturnFocus = document.activeElement;
+        } else {
+          overlayReturnFocus = null;
+        }
+
+        elements.loadingOverlayMessage.textContent = message;
+        elements.loadingOverlay.hidden = false;
+        elements.loadingOverlay.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open', 'blocking-overlay-active');
+        if (elements.appShell instanceof HTMLElement) {
+          elements.appShell.setAttribute('inert', '');
+          elements.appShell.setAttribute('aria-hidden', 'true');
+        }
+
+        window.requestAnimationFrame(() => {
+          if (!elements.loadingOverlay) return;
+          const focusTarget = elements.loadingOverlay.querySelector('.modal-content');
+          if (focusTarget instanceof HTMLElement) {
+            focusTarget.focus();
+          }
+        });
+      }
+
+      function hideFullScreenLoading() {
+        if (!elements.loadingOverlay) return;
+
+        elements.loadingOverlay.hidden = true;
+        elements.loadingOverlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('blocking-overlay-active');
+        if (!state.modal) {
+          document.body.classList.remove('modal-open');
+        }
+        if (elements.appShell instanceof HTMLElement) {
+          elements.appShell.removeAttribute('inert');
+          elements.appShell.removeAttribute('aria-hidden');
+        }
+        if (overlayReturnFocus && document.contains(overlayReturnFocus)) {
+          try {
+            overlayReturnFocus.focus();
+          } catch (error) {
+            // ignore
+          }
+        }
+        overlayReturnFocus = null;
       }
 
       function getCurrentNotebook() {
