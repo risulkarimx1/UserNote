@@ -1067,7 +1067,6 @@
             <p class="workspace-subtitle" id="workspace-subtitle">Pick a notebook on the left to start capturing entries.</p>
           </div>
           <div class="workspace-actions">
-            <button class="button ghost" type="button" id="export-notebook" disabled>Export</button>
             <button class="button ghost" type="button" id="delete-entry" disabled>Delete entry</button>
           </div>
         </header>
@@ -1159,7 +1158,6 @@
         saveButton: document.getElementById('save-entry'),
         discardButton: document.getElementById('discard-entry'),
         statusLine: document.getElementById('entry-status'),
-        exportButton: document.getElementById('export-notebook'),
         deleteButton: document.getElementById('delete-entry'),
         attachmentsRegion: document.getElementById('attachments-region'),
         attachmentsList: document.getElementById('attachment-list'),
@@ -1365,15 +1363,7 @@
         });
       }
 
-      if (elements.exportButton) {
-        elements.exportButton.addEventListener('click', () => {
-          if (!state.currentNotebook) {
-            showStatus('Select a notebook to export.', 'error');
-            return;
-          }
-          openModal({ type: 'export' });
-        });
-      }
+
 
       if (elements.openAttachmentPicker && elements.attachmentInput) {
         elements.openAttachmentPicker.addEventListener('click', () => {
@@ -1656,33 +1646,7 @@
               <button class="button danger" type="button" data-modal-action="confirm-delete-notebook">Delete notebook</button>
             </div>
           `;
-        } else if (modal.type === 'export') {
-          const notebook = getCurrentNotebook();
-          const name = notebook ? escapeHtml(notebook.name) : 'notebook';
-          panel = `
-            <h2 class="modal-title">Export ${name}</h2>
-            <p class="modal-text">Choose a format to save or share this logbook.</p>
-            <div class="modal-options">
-              <button class="modal-option" type="button" data-modal-action="export-markdown">
-                <div>
-                  <div class="modal-option-title">Markdown (.md)</div>
-                  <div class="modal-option-desc">Perfect for docs, repos, or note apps.</div>
-                </div>
-                <span class="button-icon" aria-hidden="true">↧</span>
-              </button>
-              <button class="modal-option" type="button" data-modal-action="export-pdf">
-                <div>
-                  <div class="modal-option-title">PDF (print ready)</div>
-                  <div class="modal-option-desc">Generate a printable summary via your browser.</div>
-                </div>
-                <span class="button-icon" aria-hidden="true">🖨</span>
-              </button>
-            </div>
-            <div class="modal-actions">
-              <button class="button ghost" type="button" data-modal-action="cancel-modal">Close</button>
-            </div>
-          `;
-        } else if (modal.type === 'deleteEntry') {
+ else if (modal.type === 'deleteEntry') {
           const title = modal.title ? escapeHtml(modal.title) : 'this entry';
           panel = `
             <h2 class="modal-title">Delete entry</h2>
@@ -1883,16 +1847,7 @@
           return;
         }
 
-        if (action === 'export-markdown') {
-          closeModal();
-          await exportNotebook('markdown');
-          return;
-        }
 
-        if (action === 'export-pdf') {
-          closeModal();
-          await exportNotebook('pdf');
-        }
       }
 
       async function deleteLogById(id) {
@@ -1915,121 +1870,7 @@
           state.originalText = '';
           await loadLogs();
           setMode('create');
-        } catch (error) {
-          showStatus('Network error while deleting entry.', 'error');
-        }
-      }
 
-      async function exportNotebook(format) {
-        if (!state.currentNotebook) {
-          showStatus('Select a notebook to export.', 'error');
-          return;
-        }
-
-        let exportCompleted = false;
-        let minimumDisplayTime = null;
-        
-        try {
-          // Show full-screen loading overlay with appropriate message
-          const loadingMessage = format === 'markdown' ? 'Generating Markdown file…' : 'Generating PDF…';
-          console.log('Showing loading overlay:', loadingMessage); // Debug log
-          showFullScreenLoading(loadingMessage);
-
-          // Set minimum display time to ensure the overlay is visible to users
-          minimumDisplayTime = new Promise(resolve => setTimeout(resolve, 500)); // 500ms minimum
-
-          const response = await fetch(`/api/notebooks/${encodeURIComponent(state.currentNotebook)}/export`);
-          if (!response.ok) {
-            const result = await response.json().catch(() => ({}));
-            hideFullScreenLoading();
-            await minimumDisplayTime; // Ensure minimum time has passed
-            showStatus(result.error || 'Failed to export notebook.', 'error');
-            return;
-          }
-
-          const markdown = await response.text();
-          const notebook = getCurrentNotebook();
-          const filenameBase = notebook ? notebook.slug : state.currentNotebook;
-
-          if (format === 'markdown') {
-            // Create a temporary link to trigger the download dialog
-            const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            
-            // Create a temporary link and trigger the download manually
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${filenameBase}.md`;
-            document.body.appendChild(link); // Add to DOM before clicking
-            
-            // This will trigger the browser's save dialog
-            link.click();
-            
-            // Clean up
-            document.body.removeChild(link); // Remove from DOM after clicking
-            window.URL.revokeObjectURL(url);
-            
-            exportCompleted = true;
-            hideFullScreenLoading();
-            await minimumDisplayTime; // Ensure minimum time has passed
-            showStatus('Export ready. Check your downloads.', 'success');
-          } else {
-            exportCompleted = true;
-            hideFullScreenLoading();
-            await minimumDisplayTime; // Ensure minimum time has passed
-            exportMarkdownAsPdf(markdown, filenameBase);
-          }
-        } catch (error) {
-          console.error('Export error:', error); // Debug log
-          hideFullScreenLoading();
-          if (minimumDisplayTime) {
-            await minimumDisplayTime; // Ensure minimum time has passed
-          }
-          showStatus('Network error while exporting.', 'error');
-        }
-      }
-
-      function exportMarkdownAsPdf(markdown, filenameBase) {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-          showStatus('Popup blocked. Allow popups to export PDF.', 'error');
-          return;
-        }
-
-        const escaped = escapeHtml(markdown);
-        const safeTitle = escapeHtml(filenameBase);
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>${safeTitle} export</title>
-              <style>
-                body {
-                  font-family: 'IBM Plex Mono', 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
-                  background: #ffffff;
-                  color: #1f1b15;
-                  line-height: 1.6;
-                  white-space: pre-wrap;
-                  padding: 48px;
-                }
-                h1, h2, h3 {
-                  font-weight: 600;
-                  margin-top: 32px;
-                }
-                pre {
-                  white-space: pre-wrap;
-                }
-              </style>
-            </head>
-            <body>
-              <pre>${escaped}</pre>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        printWindow.print();
-        showStatus('Print dialog opened for PDF export.', 'success');
-      }
 
       async function handleFiles(fileList) {
         if (state.mode !== 'create') return;
@@ -2371,10 +2212,6 @@
 
         if (elements.deleteNotebookButton) {
           elements.deleteNotebookButton.disabled = !hasNotebook || state.isSubmitting;
-        }
-
-        if (elements.exportButton) {
-          elements.exportButton.disabled = !hasNotebook;
         }
 
         if (elements.deleteButton) {
