@@ -1646,7 +1646,7 @@
               <button class="button danger" type="button" data-modal-action="confirm-delete-notebook">Delete notebook</button>
             </div>
           `;
- else if (modal.type === 'deleteEntry') {
+        } else if (modal.type === 'deleteEntry') {
           const title = modal.title ? escapeHtml(modal.title) : 'this entry';
           panel = `
             <h2 class="modal-title">Delete entry</h2>
@@ -1870,7 +1870,10 @@
           state.originalText = '';
           await loadLogs();
           setMode('create');
-
+        } catch (error) {
+          showStatus('Failed to delete entry.', 'error');
+        }
+      }
 
       async function handleFiles(fileList) {
         if (state.mode !== 'create') return;

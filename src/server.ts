@@ -289,30 +289,6 @@ class NotebookManager {
     return `${words[0]} ${words[1]}`;
   }
 
-  async exportNotebook(slug: string): Promise<string> {
-    const notebook = this.requireNotebook(slug);
-    const logs = [...notebook.logs].sort((a, b) => a.id - b.id);
-
-    let content = `# ${notebook.name} Logbook\n\n`;
-
-    for (const log of logs) {
-      content += `## Log ${log.id}\n\n`;
-      content += `**Date:** ${log.date}\n\n`;
-      content += `${log.text}\n\n`;
-
-      if (log.attachments && log.attachments.length > 0) {
-        for (const attachment of log.attachments) {
-          const dataUri = await this.readAttachmentAsDataUri(notebook.slug, attachment);
-          if (dataUri) {
-            content += `![${attachment.name}](${dataUri})\n\n`;
-          }
-        }
-      }
-    }
-
-    return content;
-  }
-
   async getAttachment(slug: string, filename: string) {
     const notebook = this.requireNotebook(slug);
     for (const log of notebook.logs) {
@@ -456,21 +432,6 @@ class NotebookManager {
       await fs.unlink(filePath);
     } catch (error) {
       console.warn(`Failed to delete attachment ${attachment.filename}:`, error);
-    }
-  }
-
-  private async readAttachmentAsDataUri(
-    slug: string,
-    attachment: LogAttachment
-  ): Promise<string | null> {
-    const filePath = path.join(this.getNotebookAttachmentDir(slug), attachment.filename);
-    try {
-      const file = await fs.readFile(filePath);
-      const base64 = file.toString('base64');
-      return `data:${attachment.mimeType};base64,${base64}`;
-    } catch (error) {
-      console.error(`Failed to read attachment ${attachment.filename}:`, error);
-      return null;
     }
   }
 
@@ -720,22 +681,6 @@ app.delete('/api/notebooks/:slug/logs/:id', async (req: Request, res: Response) 
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to delete log';
-    if (message === 'Notebook not found') {
-      res.status(404).json({ error: message });
-    } else {
-      res.status(500).json({ error: message });
-    }
-  }
-});
-
-app.get('/api/notebooks/:slug/export', async (req: Request, res: Response) => {
-  try {
-    const markdown = await notebookManager.exportNotebook(req.params.slug);
-    res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${req.params.slug}.md"`);
-    res.send(markdown);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to export notebook';
     if (message === 'Notebook not found') {
       res.status(404).json({ error: message });
     } else {
