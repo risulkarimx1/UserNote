@@ -793,6 +793,50 @@
       min-width: 120px;
     }
 
+    .modal-progress {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      padding: 12px 0 4px;
+      text-align: center;
+    }
+
+    .modal-progress p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      max-width: 320px;
+    }
+
+    .modal-file-path {
+      background: var(--surface-muted);
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      display: block;
+      word-break: break-all;
+      margin: 8px 0 4px;
+      color: var(--text);
+    }
+
+    .modal-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--surface-muted);
+      color: var(--accent);
+      font-size: 24px;
+    }
+
+    .modal-icon.error {
+      color: var(--danger);
+    }
+
     .modal-field {
       display: flex;
       flex-direction: column;
@@ -1044,6 +1088,14 @@
               </svg>
               <span class="button-label">Refresh</span>
             </button>
+            <button class="button secondary" type="button" id="export-notebook" aria-label="Export notebook as PDF" title="Export notebook">
+              <svg class="button-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span class="button-label">Export</span>
+            </button>
             <button class="button danger delete-notebook" type="button" id="delete-notebook" aria-label="Delete notebook" title="Delete notebook">
               <svg class="button-icon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
                 <path d="M4 7h16"></path>
@@ -1133,10 +1185,12 @@
         originalText: '',
         isLoadingNotebooks: false,
         isLoadingLogs: false,
-        isSubmitting: false,
-        pasteSequence: 1,
-        modal: null
-      };
+      isSubmitting: false,
+      pasteSequence: 1,
+      modal: null,
+      exportInProgress: false,
+      exportAbortController: null
+    };
 
       let statusTimeout = null;
       let overlayReturnFocus = null;
@@ -1149,6 +1203,7 @@
         addNotebookButton: document.getElementById('add-notebook'),
         newEntryButton: document.getElementById('new-entry'),
         refreshButton: document.getElementById('refresh-logs'),
+        exportButton: document.getElementById('export-notebook'),
         deleteNotebookButton: document.getElementById('delete-notebook'),
         entriesList: document.getElementById('entries-list'),
         workspaceTitle: document.getElementById('workspace-title'),
@@ -1249,6 +1304,16 @@
       if (elements.refreshButton) {
         elements.refreshButton.addEventListener('click', () => {
           loadLogs();
+        });
+      }
+
+      if (elements.exportButton) {
+        elements.exportButton.addEventListener('click', () => {
+          if (!state.currentNotebook) {
+            showStatus('Select a notebook first.', 'error');
+            return;
+          }
+          handleExport();
         });
       }
 
@@ -1656,6 +1721,57 @@
               <button class="button danger" type="button" data-modal-action="confirm-delete-entry">Delete entry</button>
             </div>
           `;
+        } else if (modal.type === 'exportProgress') {
+          if (modal.state === 'generating') {
+            const notebookName = modal.notebookName ? escapeHtml(modal.notebookName) : 'this notebook';
+            panel = `
+              <h2 class="modal-title">Exporting notebook</h2>
+              <div class="modal-progress">
+                <div class="equalizer" aria-hidden="true">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <p>Generating a PDF for <strong>${notebookName}</strong>. This may take a few seconds.</p>
+              </div>
+              <div class="modal-actions">
+                <button class="button danger" type="button" data-modal-action="cancel-export">Cancel</button>
+              </div>
+            `;
+          } else if (modal.state === 'success') {
+            const fileName = modal.fileName ? escapeHtml(modal.fileName) : 'notebook.pdf';
+            const filePath = modal.filePath
+              ? `<code class="modal-file-path">${escapeHtml(modal.filePath)}</code>`
+              : '';
+            panel = `
+              <h2 class="modal-title">Export successful</h2>
+              <div class="modal-progress">
+                <div class="modal-icon" aria-hidden="true">✓</div>
+                <p class="modal-text">Downloaded as <strong>${fileName}</strong>.</p>
+                ${filePath}
+              </div>
+              <div class="modal-actions">
+                <button class="button primary" type="button" data-modal-action="cancel-modal">Close</button>
+              </div>
+            `;
+          } else if (modal.state === 'error') {
+            const errorMessage =
+              typeof modal.errorMessage === 'string' && modal.errorMessage
+                ? escapeHtml(modal.errorMessage)
+                : 'Failed to export this notebook.';
+            panel = `
+              <h2 class="modal-title">Export failed</h2>
+              <div class="modal-progress">
+                <div class="modal-icon error" aria-hidden="true">!</div>
+                <p class="modal-text">${errorMessage}</p>
+              </div>
+              <div class="modal-actions">
+                <button class="button primary" type="button" data-modal-action="cancel-modal">Close</button>
+              </div>
+            `;
+          }
         } else if (modal.type === 'ollamaNotAvailable') {
           panel = `
             <h2 class="modal-title">Ollama Not Available</h2>
@@ -1732,10 +1848,15 @@
           return;
         }
 
-        if (action === 'cancel-modal') {
-          closeModal();
-          return;
-        }
+      if (action === 'cancel-modal') {
+        closeModal();
+        return;
+      }
+
+      if (action === 'cancel-export') {
+        cancelExport();
+        return;
+      }
 
         if (action === 'submit-new-notebook') {
           const input = elements.modalRoot?.querySelector('#modal-notebook-name');
@@ -1848,6 +1969,91 @@
         }
 
 
+      }
+
+      async function handleExport() {
+        if (!state.currentNotebook || state.exportInProgress) {
+          return;
+        }
+
+        const notebook = getCurrentNotebook();
+        if (!notebook) {
+          showStatus('Select a notebook first.', 'error');
+          return;
+        }
+
+        openModal({
+          type: 'exportProgress',
+          state: 'generating',
+          notebookName: notebook.name
+        });
+        state.exportInProgress = true;
+        state.exportAbortController = new AbortController();
+        updateControls();
+
+        try {
+          const response = await fetch(
+            `/api/notebooks/${encodeURIComponent(state.currentNotebook)}/export`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ format: 'pdf' }),
+              signal: state.exportAbortController.signal
+            }
+          );
+
+          if (!response.ok) {
+            const errorPayload = await readJson(response);
+            const message =
+              errorPayload?.error ||
+              `Export failed with status ${response.status}`;
+            throw new Error(message);
+          }
+
+          const blob = await response.blob();
+          const disposition = response.headers.get('Content-Disposition') || '';
+          const fileName = parseFilenameFromDisposition(disposition) || `${notebook.slug}.pdf`;
+          downloadBlob(blob, fileName);
+
+          const filePathHeader = response.headers.get('X-Export-File-Path') || '';
+          openModal({
+            type: 'exportProgress',
+            state: 'success',
+            fileName,
+            filePath: filePathHeader
+          });
+        } catch (error) {
+          const isAbort =
+            (error instanceof DOMException && error.name === 'AbortError') ||
+            (error instanceof Error && error.name === 'AbortError');
+          if (isAbort) {
+            closeModal();
+          } else {
+            const message =
+              error instanceof Error && error.message
+                ? error.message
+                : 'Failed to export notebook.';
+            openModal({
+              type: 'exportProgress',
+              state: 'error',
+              errorMessage: message
+            });
+          }
+        } finally {
+          state.exportInProgress = false;
+          state.exportAbortController = null;
+          updateControls();
+        }
+      }
+
+      function cancelExport() {
+        if (state.exportAbortController) {
+          state.exportAbortController.abort();
+        }
+        state.exportInProgress = false;
+        state.exportAbortController = null;
+        closeModal();
+        updateControls();
       }
 
       async function deleteLogById(id) {
@@ -2213,6 +2419,10 @@
           elements.refreshButton.disabled = !hasNotebook;
         }
 
+        if (elements.exportButton) {
+          elements.exportButton.disabled = !hasNotebook || state.exportInProgress;
+        }
+
         if (elements.deleteNotebookButton) {
           elements.deleteNotebookButton.disabled = !hasNotebook || state.isSubmitting;
         }
@@ -2438,6 +2648,41 @@
         } catch (error) {
           return null;
         }
+      }
+
+      function parseFilenameFromDisposition(disposition) {
+        if (!disposition) {
+          return '';
+        }
+
+        const utfMatch = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+        if (utfMatch && utfMatch[1]) {
+          try {
+            return decodeURIComponent(utfMatch[1]);
+          } catch (error) {
+            // Ignore decode errors and try fallback
+          }
+        }
+
+        const asciiMatch = disposition.match(/filename="?([^";]+)"?/i);
+        if (asciiMatch && asciiMatch[1]) {
+          return asciiMatch[1];
+        }
+
+        return '';
+      }
+
+      function downloadBlob(blob, fileName) {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
       }
 
       function escapeHtml(value) {

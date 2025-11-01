@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
-import { promises as fs } from 'fs';
+import { createReadStream, promises as fs } from 'fs';
 import path from 'path';
 import { Ollama } from 'ollama';
+import { PDFGenerator } from './services/pdfGenerator';
 
 const app = express();
 const PORT = 3000;
@@ -547,9 +548,45 @@ class NotebookManager {
 
     return true;
   }
+
+  getNotebookForExport(slug: string): NotebookData {
+    const notebook = this.requireNotebook(slug);
+    return {
+      name: notebook.name,
+      slug: notebook.slug,
+      nextId: notebook.nextId,
+      logs: notebook.logs.map((log) => ({
+        ...log,
+        attachments: log.attachments ? log.attachments.map((attachment) => ({ ...attachment })) : undefined
+      }))
+    };
+  }
+
+  getNotebooksRoot(): string {
+    return this.dataDir;
+  }
+
+  getNotebookDirectory(slug: string): string {
+    return this.getNotebookDir(slug);
+  }
 }
 
 const notebookManager = new NotebookManager();
+const pdfGenerator = new PDFGenerator({ notebooksRoot: notebookManager.getNotebooksRoot() });
+
+function createExportFilename(notebookName: string, slug: string) {
+  const sanitizedName = notebookName
+    .trim()
+    .replace(/[^a-z0-9]+/gi, '_')
+    .replace(/^_+|_+$/g, '');
+  const base = sanitizedName || slug.replace(/[^a-z0-9]+/gi, '_') || 'notebook';
+  const now = new Date();
+  const pad = (value: number) => value.toString().padStart(2, '0');
+  const timestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(
+    now.getHours()
+  )}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+  return `${base}_${timestamp}.pdf`;
+}
 
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
@@ -639,6 +676,69 @@ app.post('/api/notebooks/:slug/logs', async (req: Request, res: Response) => {
     } else {
       res.status(500).json({ error: message });
     }
+  }
+});
+
+app.post('/api/notebooks/:slug/export', async (req: Request, res: Response) => {
+  const { slug } = req.params;
+  const { format } = (req.body || {}) as { format?: string };
+
+  if (format && format.toLowerCase() !== 'pdf') {
+    return res.status(400).json({ success: false, error: 'Unsupported export format' });
+  }
+
+  let notebook: NotebookData;
+  try {
+    notebook = notebookManager.getNotebookForExport(slug);
+  } catch (error) {
+    return res.status(404).json({ success: false, error: 'Notebook not found' });
+  }
+
+  const filename = createExportFilename(notebook.name, notebook.slug);
+  const outputDir = notebookManager.getNotebookDirectory(slug);
+  const outputPath = path.join(outputDir, filename);
+  const abortController = new AbortController();
+  const abortListener = () => abortController.abort();
+  req.once('aborted', abortListener);
+
+  try {
+    await fs.mkdir(outputDir, { recursive: true });
+
+    await pdfGenerator.generateJournal({
+      notebook,
+      outputPath,
+      signal: abortController.signal,
+      onProgress: (progress, message) => {
+        const percentage = Math.round(progress * 100);
+        console.log(`[pdf-export] ${notebook.slug}: ${percentage}% - ${message}`);
+      }
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('X-Export-File-Path', outputPath);
+    res.setHeader('Cache-Control', 'no-store');
+
+    const stream = createReadStream(outputPath);
+    stream.on('error', (error) => {
+      console.error(`Failed to stream generated PDF for notebook ${slug}:`, error);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, error: 'Failed to download PDF' });
+      } else {
+        res.destroy(error);
+      }
+    });
+    stream.pipe(res);
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error('Failed to export notebook');
+    if (err.name === 'AbortError') {
+      res.status(499).json({ success: false, error: 'Export cancelled' });
+    } else {
+      console.error(`Failed to export notebook ${slug}:`, err);
+      res.status(500).json({ success: false, error: err.message || 'Failed to export notebook' });
+    }
+  } finally {
+    req.removeListener('aborted', abortListener);
   }
 });
 

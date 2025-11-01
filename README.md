@@ -7,7 +7,7 @@ A modern, AI-powered multi-notebook logging application that helps you capture a
 - AI-powered text improvement using local Ollama models
 - Multiple notebooks for organization
 - Image attachments support
-- Export to Markdown with embedded images
+- One-click PDF export with embedded screenshots
 - Local-first storage (no cloud required)
 - Clean, modern UI with collapsible sidebar
 
@@ -43,3 +43,7 @@ npm start
 ```
 
 Open `http://localhost:3000` in your browser to start logging!
+
+### PDF Export
+
+Select a notebook and use the **Export** button in the top toolbar to download a PDF that includes your entries and embedded screenshots.
